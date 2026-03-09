@@ -3,7 +3,7 @@
     "display_name": "Dual Models (Диалоги и Описания)",
     "description": "Разделяет генерацию на две модели",
     "version": "1.0.0",
-    "author": "ТвоеИмя",
+    "author": "t3rmad0l",
     "js": "index.js",
     "require": [],
     "optional": []
