@@ -1,9 +1,13 @@
-// Dual Models Extension - Версия с кнопкой и проверкой подключения
+// Dual Models Extension - Версия с выбором моделей и остановкой генерации
 (function() {
     'use strict';
     
     const extensionName = "dual-models";
     const extensionFolderPath = "scripts/extensions/third-party/dual-models";
+    
+    let availableModels = [];
+    let isGenerating = false;
+    let abortController = null;
     
     jQuery(async function() {
         console.log("🚀 Dual Models: Начинаем загрузку...");
@@ -19,7 +23,8 @@
                 url: "",
                 key: "",
                 dialogueModel: "",
-                actionModel: ""
+                actionModel: "",
+                connected: false
             };
         }
         
@@ -36,8 +41,11 @@
             $("#dual_models_enable").prop("checked", settings.enabled);
             $("#dual_models_url").val(settings.url);
             $("#dual_models_key").val(settings.key);
-            $("#dual_models_dialogue").val(settings.dialogueModel);
-            $("#dual_models_action").val(settings.actionModel);
+            
+            // Если уже были подключены, показываем выбор моделей
+            if (settings.connected && settings.dialogueModel && settings.actionModel) {
+                $("#dual_models_model_selection").show();
+            }
             
             // Функция сохранения
             function saveSettings() {
@@ -62,6 +70,8 @@
             async function callModel(modelName, messages) {
                 console.log(`📡 Отправляем запрос к модели: ${modelName}`);
                 
+                abortController = new AbortController();
+                
                 const response = await fetch(`${settings.url}/chat/completions`, {
                     method: 'POST',
                     headers: {
@@ -73,7 +83,8 @@
                         messages: messages,
                         temperature: 0.9,
                         max_tokens: 500
-                    })
+                    }),
+                    signal: abortController.signal
                 });
                 
                 if (!response.ok) {
@@ -86,17 +97,17 @@
                 return data.choices[0].message.content;
             }
             
-            // Обработчик кнопки "Проверить подключение"
+            // Обработчик кнопки "Подключиться к прокси"
             $("#dual_models_test_connection").on("click", async function() {
                 const button = $(this);
-                button.prop("disabled", true).text("⏳ Проверяем...");
+                button.prop("disabled", true).text("⏳ Подключаемся...");
                 
                 try {
                     if (!settings.url || !settings.key) {
                         throw new Error("Заполните URL и API ключ");
                     }
                     
-                    // Пробуем получить список моделей
+                    // Получаем список моделей
                     const response = await fetch(`${settings.url}/models`, {
                         headers: {
                             'Authorization': `Bearer ${settings.key}`
@@ -108,17 +119,74 @@
                     }
                     
                     const data = await response.json();
-                    const modelCount = data.data ? data.data.length : 0;
+                    availableModels = data.data || [];
                     
-                    showStatus(`✅ Подключено! Доступно моделей: ${modelCount}`, true);
-                    console.log("✅ Подключение успешно:", data);
+                    if (availableModels.length === 0) {
+                        throw new Error("Не найдено доступных моделей");
+                    }
+                    
+                    // Заполняем выпадающие списки
+                    const dialogueSelect = $("#dual_models_dialogue");
+                    const actionSelect = $("#dual_models_action");
+                    
+                    dialogueSelect.empty().append('<option value="">Выберите модель...</option>');
+                    actionSelect.empty().append('<option value="">Выберите модель...</option>');
+                    
+                    availableModels.forEach(model => {
+                        const modelId = model.id || model;
+                        dialogueSelect.append(`<option value="${modelId}">${modelId}</option>`);
+                        actionSelect.append(`<option value="${modelId}">${modelId}</option>`);
+                    });
+                    
+                    // Восстанавливаем сохраненный выбор
+                    if (settings.dialogueModel) {
+                        dialogueSelect.val(settings.dialogueModel);
+                    }
+                    if (settings.actionModel) {
+                        actionSelect.val(settings.actionModel);
+                    }
+                    
+                    settings.connected = true;
+                    saveSettings();
+                    
+                    showStatus(`✅ Подключено! Доступно моделей: ${availableModels.length}`, true);
+                    $("#dual_models_model_selection").slideDown();
+                    
+                    console.log("✅ Подключение успешно. Модели:", availableModels);
                     
                 } catch (error) {
+                    settings.connected = false;
+                    saveSettings();
                     showStatus(`❌ Ошибка подключения: ${error.message}`, false);
                     console.error("❌ Ошибка подключения:", error);
                 } finally {
-                    button.prop("disabled", false).text("🔌 Проверить подключение");
+                    button.prop("disabled", false).text("🔌 Подключиться к прокси");
                 }
+            });
+            
+            // Обработчик изменения выбора моделей
+            $("#dual_models_dialogue, #dual_models_action").on("change", function() {
+                const dialogueModel = $("#dual_models_dialogue").val();
+                const actionModel = $("#dual_models_action").val();
+                
+                // Активируем кнопку подтверждения, если обе модели выбраны
+                if (dialogueModel && actionModel) {
+                    $("#dual_models_confirm_models").prop("disabled", false);
+                } else {
+                    $("#dual_models_confirm_models").prop("disabled", true);
+                }
+            });
+            
+            // Обработчик кнопки "Подтвердить выбор моделей"
+            $("#dual_models_confirm_models").on("click", function() {
+                settings.dialogueModel = $("#dual_models_dialogue").val();
+                settings.actionModel = $("#dual_models_action").val();
+                saveSettings();
+                
+                showStatus(`✅ Модели сохранены: ${settings.dialogueModel} + ${settings.actionModel}`, true);
+                toastr.success("Модели успешно настроены!", "Dual Models");
+                
+                updateDualGenButton();
             });
             
             // Обработчики изменений настроек
@@ -131,71 +199,83 @@
             
             $("#dual_models_url").on("input", function() {
                 settings.url = $(this).val();
+                settings.connected = false;
                 saveSettings();
             });
             
             $("#dual_models_key").on("input", function() {
                 settings.key = $(this).val();
-                saveSettings();
-            });
-            
-            $("#dual_models_dialogue").on("input", function() {
-                settings.dialogueModel = $(this).val();
-                saveSettings();
-            });
-            
-            $("#dual_models_action").on("input", function() {
-                settings.actionModel = $(this).val();
+                settings.connected = false;
                 saveSettings();
             });
             
             // ========== ДОБАВЛЯЕМ КНОПКУ В ЧАТ ==========
             
             function updateDualGenButton() {
-                // Удаляем старую кнопку, если есть
+                // Удаляем старую кнопку
                 $("#dual_gen_button").remove();
                 
-                if (!settings.enabled) {
+                if (!settings.enabled || !settings.connected || !settings.dialogueModel || !settings.actionModel) {
                     return;
                 }
                 
-                // Создаем новую кнопку
+                // Создаем кнопку
                 const button = $('<div id="dual_gen_button" class="mes_button" title="Генерация через две модели">')
                     .html('🎭')
                     .css({
                         'cursor': 'pointer',
                         'font-size': '20px',
-                        'padding': '5px 10px'
+                        'padding': '5px 10px',
+                        'display': 'inline-block'
                     });
                 
-                // Добавляем кнопку рядом с кнопкой отправки
+                // Добавляем рядом с кнопкой отправки
                 $("#send_but").parent().prepend(button);
                 
                 // Обработчик клика
                 button.on("click", async function() {
-                    await generateWithDualModels();
+                    if (isGenerating) {
+                        stopGeneration();
+                    } else {
+                        await generateWithDualModels();
+                    }
                 });
+            }
+            
+            // Функция остановки генерации
+            function stopGeneration() {
+                if (abortController) {
+                    abortController.abort();
+                    abortController = null;
+                }
+                isGenerating = false;
+                $("#dual_gen_button").html('🎭').css('color', '');
+                toastr.info("Генерация остановлена", "Dual Models");
+                console.log("⏹️ Генерация остановлена пользователем");
             }
             
             // Функция двойной генерации
             async function generateWithDualModels() {
                 console.log("🎭 Dual Models: Начинаем двойную генерацию...");
                 
-                // Проверяем настройки
-                if (!settings.url || !settings.key || !settings.dialogueModel || !settings.actionModel) {
-                    toastr.warning("Заполните все настройки Dual Models", "Dual Models");
+                if (!settings.connected || !settings.dialogueModel || !settings.actionModel) {
+                    toastr.warning("Сначала подключитесь к прокси и выберите модели", "Dual Models");
                     return;
                 }
                 
                 try {
-                    // Показываем индикатор загрузки
-                    $("#send_but").addClass("fa-spinner fa-spin");
+                    isGenerating = true;
                     
-                    // Получаем контекст чата
-                    const chatHistory = window.SillyTavern?.getContext?.()?.chat || [];
+                    // Меняем иконку на "стоп"
+                    $("#dual_gen_button").html('⏹️').css('color', '#ff4444');
+                    
+                    // Получаем историю чата
+                    const context = SillyTavern.getContext();
+                    const chat = context.chat;
+                    const characterName = context.name2 || 'Character';
                     
                     // Формируем историю (последние 10 сообщений)
-                    const messages = chatHistory.slice(-10).map(msg => ({
+                    const messages = chat.slice(-10).map(msg => ({
                         role: msg.is_user ? 'user' : 'assistant',
                         content: msg.mes
                     }));
@@ -208,6 +288,8 @@
                     ];
                     const dialogue = await callModel(settings.dialogueModel, dialogueMessages);
                     
+                    if (!isGenerating) return; // Проверка на отмену
+                    
                     // ШАГ 2: Генерируем описание
                     console.log("📖 Генерируем описание...");
                     const actionMessages = [
@@ -216,31 +298,38 @@
                     ];
                     const action = await callModel(settings.actionModel, actionMessages);
                     
+                    if (!isGenerating) return; // Проверка на отмену
+                    
                     // ШАГ 3: Склеиваем и добавляем в чат
                     const finalMessage = `${dialogue}\n\n${action}`;
                     
-                    // Добавляем сообщение в чат (используем внутренний API Таверны)
-                    if (window.Generate) {
-                        await window.Generate(finalMessage);
-                    } else {
-                        // Альтернативный способ
-                        chatHistory.push({
-                            name: window.name2 || 'Character',
-                            is_user: false,
-                            mes: finalMessage,
-                            send_date: Date.now()
-                        });
-                        window.addOneMessage?.(chatHistory[chatHistory.length - 1]);
-                    }
+                    // Добавляем сообщение в чат (универсальный способ)
+                    const newMessage = {
+                        name: characterName,
+                        is_user: false,
+                        is_system: false,
+                        mes: finalMessage,
+                        send_date: new Date().toISOString()
+                    };
+                    
+                    chat.push(newMessage);
+                    context.addOneMessage(newMessage);
+                    await context.saveChat();
                     
                     console.log("🎉 Двойная генерация завершена!");
-                    toastr.success("Сообщение сгенерировано через две модели", "Dual Models");
+                    toastr.success("Сообщение добавлено в чат", "Dual Models");
                     
                 } catch (error) {
-                    console.error("❌ Ошибка генерации:", error);
-                    toastr.error(`Ошибка: ${error.message}`, "Dual Models");
+                    if (error.name === 'AbortError') {
+                        console.log("⏹️ Генерация отменена");
+                    } else {
+                        console.error("❌ Ошибка генерации:", error);
+                        toastr.error(`Ошибка: ${error.message}`, "Dual Models");
+                    }
                 } finally {
-                    $("#send_but").removeClass("fa-spinner fa-spin");
+                    isGenerating = false;
+                    $("#dual_gen_button").html('🎭').css('color', '');
+                    abortController = null;
                 }
             }
             
