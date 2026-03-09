@@ -1,0 +1,22 @@
+<div class="extension_settings_drawer">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>🎭 Dual Models (Диалоги и Описания)</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content" style="display: none;">
+            <div class="flex-container" style="margin-bottom: 10px;">
+                <label><input type="checkbox" id="dual_models_enable"> <b>Включить расширение</b></label>
+            </div>
+            <hr>
+            <label>🌐 Proxy URL (например, http://127.0.0.1:5000/v1):</label>
+            <input type="text" id="dual_models_url" class="text_pole" placeholder="http://...">
+            <label>🔑 API Ключ пользователя:</label>
+            <input type="password" id="dual_models_key" class="text_pole" placeholder="sk-...">
+            <label>🗣️ Модель для диалогов:</label>
+            <input type="text" id="dual_models_dialogue" class="text_pole" placeholder="gpt-4">
+            <label>📖 Модель для описаний:</label>
+            <input type="text" id="dual_models_action" class="text_pole" placeholder="claude-3">
+        </div>
+    </div>
+</div>
