@@ -1,16 +1,16 @@
-import { getContext } from "../../../extensions.js";
-
-// Этот лог сработает ДО всего остального. Если его нет — Таверна вообще не видит файл.
-console.log("🟢 DUAL MODELS: Файл index.js найден и запущен!");
-
-const extensionName = "dual-models";
+console.log("🟢 DUAL MODELS: Скрипт загружен (БЕЗ ИМПОРТОВ)!");
 
 jQuery(async () => {
     console.log("🟢 DUAL MODELS: Начинаем сборку интерфейса...");
-    
-    const context = getContext();
-    
-    // Стандартные настройки
+
+    const extensionName = "dual-models";
+
+    // Проверяем, дала ли Таверна доступ к настройкам
+    if (typeof extension_settings === 'undefined') {
+        console.error("🔴 DUAL MODELS: Ошибка! Нет доступа к настройкам.");
+        return;
+    }
+
     const defaultSettings = {
         enabled: false,
         url: "",
@@ -20,13 +20,13 @@ jQuery(async () => {
     };
 
     // Загружаем настройки
-    if (!context.extension_settings[extensionName]) {
-        context.extension_settings[extensionName] = defaultSettings;
+    if (!extension_settings[extensionName]) {
+        extension_settings[extensionName] = defaultSettings;
     }
-    const settings = Object.assign({}, defaultSettings, context.extension_settings[extensionName]);
-    context.extension_settings[extensionName] = settings;
+    const settings = Object.assign({}, defaultSettings, extension_settings[extensionName]);
+    extension_settings[extensionName] = settings;
 
-    // ВШИВАЕМ HTML ПРЯМО В КОД (никаких внешних файлов и ошибок 404!)
+    // ВШИВАЕМ HTML ПРЯМО В КОД
     const html = `
         <div class="extension_settings_drawer">
             <div class="inline-drawer">
@@ -63,8 +63,12 @@ jQuery(async () => {
     $("#dual_models_dialogue").val(settings.dialogueModel);
     $("#dual_models_action").val(settings.actionModel);
 
-    // Сохранение
-    const save = () => { context.saveSettingsDebounced(); };
+    // Функция сохранения
+    const save = () => {
+        if (typeof saveSettingsDebounced === 'function') {
+            saveSettingsDebounced();
+        }
+    };
 
     // Слушаем изменения
     $("#dual_models_enable").on("change", function () { settings.enabled = $(this).is(":checked"); save(); });
