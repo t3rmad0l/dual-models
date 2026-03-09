@@ -24,20 +24,36 @@
 
             <div style="margin: 15px 0;">
                 <button id="dual_models_test_connection" class="menu_button">
-                    🔌 Проверить подключение
+                    🔌 Подключиться к прокси
                 </button>
             </div>
 
             <hr>
 
-            <label>🗣️ Модель для диалогов:</label>
-            <input type="text" id="dual_models_dialogue" class="text_pole" placeholder="gpt-4">
+            <div id="dual_models_model_selection" style="display: none;">
+                <label>🗣️ Модель для диалогов:</label>
+                <select id="dual_models_dialogue" class="text_pole">
+                    <option value="">Выберите модель...</option>
+                </select>
 
-            <label>📖 Модель для описаний:</label>
-            <input type="text" id="dual_models_action" class="text_pole" placeholder="claude-3">
+                <label>📖 Модель для описаний:</label>
+                <select id="dual_models_action" class="text_pole">
+                    <option value="">Выберите модель...</option>
+                </select>
+
+                <div style="margin: 15px 0;">
+                    <button id="dual_models_confirm_models" class="menu_button" disabled>
+                        ✅ Подтвердить выбор моделей
+                    </button>
+                </div>
+            </div>
             
             <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 5px;">
-                <small>💡 <b>Как использовать:</b> После включения расширения в чате появится кнопка <b>🎭</b>. Нажми на неё вместо обычной отправки, чтобы использовать две модели одновременно.</small>
+                <small>💡 <b>Как использовать:</b><br>
+                1. Подключитесь к прокси<br>
+                2. Выберите две модели из списка<br>
+                3. Подтвердите выбор<br>
+                4. В чате появится кнопка <b>🎭</b> для двойной генерации</small>
             </div>
             
         </div>
