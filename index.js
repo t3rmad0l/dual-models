@@ -1,72 +1,75 @@
 import { getContext } from "../../../extensions.js";
 
-console.log("🚀 Dual Models: Скрипт успешно подключен!");
+// Этот лог сработает ДО всего остального. Если его нет — Таверна вообще не видит файл.
+console.log("🟢 DUAL MODELS: Файл index.js найден и запущен!");
 
 const extensionName = "dual-models";
-const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
-
-const defaultSettings = {
-    enabled: false,
-    url: "",
-    key: "",
-    dialogueModel: "",
-    actionModel: ""
-};
 
 jQuery(async () => {
-    console.log("🚀 Dual Models: Начинаем отрисовку интерфейса...");
+    console.log("🟢 DUAL MODELS: Начинаем сборку интерфейса...");
     
-    // Получаем безопасный доступ к функциям Таверны
     const context = getContext();
     
+    // Стандартные настройки
+    const defaultSettings = {
+        enabled: false,
+        url: "",
+        key: "",
+        dialogueModel: "",
+        actionModel: ""
+    };
+
     // Загружаем настройки
     if (!context.extension_settings[extensionName]) {
         context.extension_settings[extensionName] = defaultSettings;
     }
     const settings = Object.assign({}, defaultSettings, context.extension_settings[extensionName]);
-    context.extension_settings[extensionName] = settings; // сохраняем обратно
+    context.extension_settings[extensionName] = settings;
 
-    try {
-        // Загружаем наш HTML файл
-        const settingsHtml = await $.get(`${extensionFolderPath}/settings.html`);
-        $("#extensions_settings").append(settingsHtml);
-        console.log("✅ Dual Models: Меню успешно добавлено в Таверну!");
+    // ВШИВАЕМ HTML ПРЯМО В КОД (никаких внешних файлов и ошибок 404!)
+    const html = `
+        <div class="extension_settings_drawer">
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <b>🎭 Dual Models (Диалоги и Описания)</b>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content" style="display: none;">
+                    <div class="flex-container" style="margin-bottom: 10px;">
+                        <label><input type="checkbox" id="dual_models_enable"> <b>Включить расширение</b></label>
+                    </div>
+                    <hr>
+                    <label>🌐 Proxy URL (например, http://127.0.0.1:5000/v1):</label>
+                    <input type="text" id="dual_models_url" class="text_pole" placeholder="http://...">
+                    <label>🔑 API Ключ пользователя:</label>
+                    <input type="password" id="dual_models_key" class="text_pole" placeholder="sk-...">
+                    <label>🗣️ Модель для диалогов:</label>
+                    <input type="text" id="dual_models_dialogue" class="text_pole" placeholder="gpt-4">
+                    <label>📖 Модель для описаний:</label>
+                    <input type="text" id="dual_models_action" class="text_pole" placeholder="claude-3">
+                </div>
+            </div>
+        </div>
+    `;
 
-        // Заполняем поля сохраненными значениями
-        $("#dual_models_enable").prop("checked", settings.enabled);
-        $("#dual_models_url").val(settings.url);
-        $("#dual_models_key").val(settings.key);
-        $("#dual_models_dialogue").val(settings.dialogueModel);
-        $("#dual_models_action").val(settings.actionModel);
+    // Добавляем меню в Таверну
+    $("#extensions_settings").append(html);
+    console.log("🟢 DUAL MODELS: Меню успешно добавлено на экран!");
 
-        // Функция для сохранения (теперь используем современный метод)
-        const save = () => {
-            context.saveSettingsDebounced();
-        };
+    // Заполняем поля
+    $("#dual_models_enable").prop("checked", settings.enabled);
+    $("#dual_models_url").val(settings.url);
+    $("#dual_models_key").val(settings.key);
+    $("#dual_models_dialogue").val(settings.dialogueModel);
+    $("#dual_models_action").val(settings.actionModel);
 
-        // Сохраняем настройки при любом изменении
-        $("#dual_models_enable").on("change", function () {
-            settings.enabled = $(this).is(":checked");
-            save();
-        });
-        $("#dual_models_url").on("input", function () {
-            settings.url = $(this).val();
-            save();
-        });
-        $("#dual_models_key").on("input", function () {
-            settings.key = $(this).val();
-            save();
-        });
-        $("#dual_models_dialogue").on("input", function () {
-            settings.dialogueModel = $(this).val();
-            save();
-        });
-        $("#dual_models_action").on("input", function () {
-            settings.actionModel = $(this).val();
-            save();
-        });
+    // Сохранение
+    const save = () => { context.saveSettingsDebounced(); };
 
-    } catch (error) {
-        console.error("❌ Dual Models ОШИБКА:", error);
-    }
+    // Слушаем изменения
+    $("#dual_models_enable").on("change", function () { settings.enabled = $(this).is(":checked"); save(); });
+    $("#dual_models_url").on("input", function () { settings.url = $(this).val(); save(); });
+    $("#dual_models_key").on("input", function () { settings.key = $(this).val(); save(); });
+    $("#dual_models_dialogue").on("input", function () { settings.dialogueModel = $(this).val(); save(); });
+    $("#dual_models_action").on("input", function () { settings.actionModel = $(this).val(); save(); });
 });
