@@ -1,4 +1,4 @@
-console.log("🟢 DUAL MODELS: Скрипт загружен (БЕЗ ИМПОРТОВ)!");
+alert("🚨 DUAL MODELS ЗАГРУЖАЕТСЯ! Если ты видишь это окно — значит файл index.js работает!");
 
 jQuery(async () => {
     console.log("🟢 DUAL MODELS: Начинаем сборку интерфейса...");
